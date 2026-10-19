@@ -2,12 +2,14 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Zombie Neon Survival</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     background: #000;
     height: 100vh;
+    height: 100dvh;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -15,6 +17,9 @@
     font-family: 'Segoe UI', sans-serif;
     color: #fff;
     user-select: none;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
   }
 
   #mainMenu {
@@ -416,6 +421,8 @@
     position: relative; display: none;
     box-shadow: 0 0 40px #0ff, 0 0 80px #f0f inset;
     border-radius: 8px; overflow: hidden;
+    transform-origin: center center;
+    flex-shrink: 0;
   }
   #gameWrap.active { display: block; }
   canvas { display: block; }
@@ -448,7 +455,7 @@
   #dialogueBox {
     position: fixed; inset: 0;
     display: none; justify-content: center; align-items: center;
-    z-index: 80; pointer-events: none;
+    z-index: 80; pointer-events: auto; cursor: pointer;
   }
   #dialogueBox.open { display: flex; }
   #dialogueContent {
@@ -546,6 +553,93 @@
     color: #888;
     letter-spacing: 2px;
   }
+
+  /* ==================== JOYSTICK ANALOGICO ==================== */
+  .menuBtns { display: flex; flex-direction: column; align-items: center; position: relative; z-index: 2; }
+  #joystickLayer { position: fixed; inset: 0; display: none; z-index: 60; pointer-events: none; }
+  @media (pointer: coarse) {
+    #gameWrap.active ~ #joystickLayer { display: block; }
+  }
+  .joy {
+    position: absolute; bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    width: 130px; height: 130px;
+    border-radius: 50%; pointer-events: auto; touch-action: none;
+    background: radial-gradient(circle, rgba(0,255,255,0.12), rgba(0,255,255,0.03));
+    border: 3px solid rgba(0,255,255,0.5);
+    box-shadow: 0 0 20px rgba(0,255,255,0.4), inset 0 0 20px rgba(0,255,255,0.15);
+  }
+  #joy0 { left: calc(22px + env(safe-area-inset-left, 0px)); }
+  #joy1 { right: calc(22px + env(safe-area-inset-right, 0px)); display: none; border-color: rgba(68,170,255,0.6); box-shadow: 0 0 20px rgba(68,170,255,0.4), inset 0 0 20px rgba(68,170,255,0.15); }
+  #joystickLayer.two #joy1 { display: block; }
+  .joy .stick {
+    position: absolute; left: 50%; top: 50%; width: 42%; height: 42%;
+    transform: translate(-50%, -50%); border-radius: 50%;
+    background: rgba(0,255,255,0.45); border: 2px solid #0ff;
+    box-shadow: 0 0 18px #0ff;
+  }
+  #joy1 .stick { background: rgba(68,170,255,0.45); border-color: #4af; box-shadow: 0 0 18px #4af; }
+
+  /* invito a ruotare il telefono (solo touch, in verticale, durante la partita) */
+  #rotateHint {
+    display: none; position: fixed; inset: 0; z-index: 70;
+    background: rgba(0,0,0,0.96); flex-direction: column;
+    justify-content: center; align-items: center; text-align: center;
+    color: #0ff; font-size: 1.2em; letter-spacing: 2px; padding: 20px; gap: 14px;
+    text-shadow: 0 0 10px #0ff;
+  }
+  #rotateHint .ico { font-size: 3em; animation: mascotBounce 1s ease-in-out infinite; }
+  @media (pointer: coarse) and (orientation: portrait) {
+    #gameWrap.active ~ #rotateHint { display: flex; }
+  }
+
+  /* ==================== MOBILE / SCHERMI PICCOLI ==================== */
+  @media (max-height: 520px), (max-width: 760px) {
+    #title { font-size: 2.6em; letter-spacing: 3px; margin-bottom: 2px; }
+    #subtitle { font-size: 0.7em; letter-spacing: 4px; margin-bottom: 14px; }
+    .menuBtns { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 10px; padding: 0 12px; }
+    .menuBtn {
+      padding: 10px 22px; font-size: 1em; letter-spacing: 2px;
+      min-width: 0; margin: 4px 0; border-width: 2px; border-radius: 10px;
+    }
+    #mascot { width: 36px; height: 48px; bottom: 10px; right: 12px; }
+    #version { bottom: 8px; right: 60px; font-size: 0.7em; }
+    #bestRecordMenu { bottom: 8px; left: 12px; font-size: 0.7em; line-height: 1.4; letter-spacing: 1px; }
+
+    .modal { padding: 8px; }
+    .modalBox { padding: 14px 18px; max-height: 96vh; max-height: 96dvh; border-radius: 14px; }
+    .modalBox h2 { font-size: 1.2em; margin-bottom: 10px; letter-spacing: 2px; }
+    .settingRow { padding: 6px 0; }
+    .settingRow label { font-size: 0.85em; }
+    input[type=range] { width: 150px; }
+    .charPlayerBtn { padding: 8px 14px; font-size: 0.8em; }
+    .charPlayerSelector { margin-bottom: 10px; }
+    .charGrid { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; }
+    .charOption { height: 120px; padding: 8px; }
+    .charOption .previewSprite { width: 45px; height: 60px; }
+    .shopGrid { gap: 10px; }
+    .shopColumn { padding: 10px; }
+    .shopColumnTitle { font-size: 1em; margin-bottom: 8px; }
+    .bulletItem { padding: 6px 8px; margin-bottom: 5px; }
+    .bulletIcon { font-size: 1.2em; }
+    .bulletBtn { padding: 5px 9px; font-size: 0.75em; }
+    .shopFooter { font-size: 0.7em; margin-top: 10px; }
+    .modalBtns { margin-top: 12px; gap: 10px; }
+    .modalBtn { padding: 8px 18px; font-size: 0.9em; }
+
+    #gameOverScreen h1 { font-size: 2.2em; margin-bottom: 8px; letter-spacing: 3px; }
+    #gameOverScreen p { font-size: 1em; margin: 4px 0; }
+    #gameOverScreen .menuBtn { margin-top: 8px !important; }
+
+    #dialogueContent { min-width: 0; width: min(92vw, 640px); padding: 14px 20px; border-radius: 14px; }
+    #dialoguePortrait { font-size: 2.2em; margin-bottom: 4px; }
+    #dialogueSpeaker { margin-bottom: 6px; font-size: 0.75em; }
+    #dialogueText { font-size: 1em; min-height: 2.6em; }
+    #dialogueHint { margin-top: 8px; font-size: 0.7em; }
+    #dialogueProgress { position: static; transform: none; margin-top: 6px; }
+  }
+  @media (max-height: 400px) {
+    .joy { width: 112px; height: 112px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+  }
 </style>
 </head>
 <body>
@@ -558,9 +652,11 @@
   <h1 id="title">ZOMBIE NEON</h1>
   <p id="subtitle">SURVIVE THE HORDE</p>
 
-  <button class="menuBtn" onclick="openModePopup()">▶ PLAY</button>
-  <button class="menuBtn shop" onclick="openShop()">🛒 SHOP</button>
-  <button class="menuBtn settings" onclick="openSettings()">⚙ SETTINGS</button>
+  <div class="menuBtns">
+    <button class="menuBtn" onclick="openModePopup()">▶ PLAY</button>
+    <button class="menuBtn shop" onclick="openShop()">🛒 SHOP</button>
+    <button class="menuBtn settings" onclick="openSettings()">⚙ SETTINGS</button>
+  </div>
 
   <canvas id="mascot" width="48" height="64"></canvas>
   <div id="bestRecordMenu">
@@ -568,7 +664,7 @@
     <span class="p2rec">🏆 2P: <span id="bestRecord2PMenu">0</span></span><br>
     <span class="coins">🪙 P1: <span id="coinsP1Menu">0</span> · P2: <span id="coinsP2Menu">0</span></span>
   </div>
-  <div id="version">v3.0</div>
+  <div id="version">v3.1</div>
 
   <div id="scanlines"></div>
 </div>
@@ -642,12 +738,19 @@
   <canvas id="canvas" width="900" height="600"></canvas>
 </div>
 
+<div id="joystickLayer">
+  <div class="joy" id="joy0"><div class="stick"></div></div>
+  <div class="joy" id="joy1"><div class="stick"></div></div>
+</div>
+
+<div id="rotateHint"><span class="ico">📱</span>RUOTA IL TELEFONO<br><span style="font-size:0.7em;opacity:0.7">Il gioco si gioca in orizzontale</span></div>
+
 <div id="dialogueBox">
   <div id="dialogueContent">
     <span id="dialoguePortrait">🧟‍♂️</span>
     <div id="dialogueSpeaker">BOSS</div>
     <div id="dialogueText"></div>
-    <div id="dialogueHint">▶ PREMI INVIO O SPAZIO</div>
+    <div id="dialogueHint">▶ TOCCA LO SCHERMO O PREMI INVIO</div>
     <div id="dialogueProgress">1 / 1</div>
   </div>
 </div>
@@ -667,7 +770,8 @@
 // ==================== CONFIG ====================
 const W = 900, H = 600;
 const CONFIG = {
-  playerSpeed: 4.6,
+  mobileSpeedMul: 0.75,    // moltiplicatore velocità su mobile (giocatore, zombie, boss, onde): 1 = uguale al PC
+  playerSpeed: 3.8,        // px per frame a 60Hz (prima 4.6)
   playerSize: 28,
   playerDrawWidth: 60,
   playerDrawHeight: 80,
@@ -678,6 +782,9 @@ const CONFIG = {
   magazineSize: 12,    
   
   powerupDropChance: 0.07, // 7% (prima era 20%)
+  comboWindow: 2500,       // ms entro cui incatenare un'altra uccisione per tenere viva la combo
+  comboStep: 5,            // ogni quante uccisioni sale di un gradino il moltiplicatore
+  comboMaxMult: 4,         // moltiplicatore punti massimo raggiungibile
   fireZombieLevel: 10,     // livello (come mostrato a schermo) da cui compaiono gli zombie fuoco
   dashZombieLevel: 15,     // livello da cui compaiono gli zombie scattisti
   bruteZombieLevel: 20,    // livello da cui compare lo zombie grosso
@@ -698,6 +805,7 @@ const CONFIG = {
   maxZombies1P: 6,     
   maxZombies2P: 8,
   zombiesPerSpawn: 3,
+  zombieSpawnMinDist: 380, // distanza minima (px) dal giocatore più vicino a cui possono comparire gli zombie
   difficultyInterval: 10000,
   spawnDecreasePerLevel: 500,
   speedIncreasePerLevel: 0.15,
@@ -1169,6 +1277,50 @@ document.addEventListener('keydown', e => {
 });
 document.addEventListener('keyup', e => { state.keys[e.key.toLowerCase()] = false; });
 
+// ==================== JOYSTICK ANALOGICO + TAP NEI DIALOGHI ====================
+const joysticks = [{ x: 0, y: 0, active: false, pid: null }, { x: 0, y: 0, active: false, pid: null }];
+const joystickLayer = document.getElementById('joystickLayer');
+const touchMQ = window.matchMedia('(pointer: coarse)');
+const portraitMQ = window.matchMedia('(orientation: portrait)');
+let SPD = 1; // moltiplicatore velocità attivo (CONFIG.mobileSpeedMul su touch, altrimenti 1)
+
+function setupJoystick(idx) {
+  const base = document.getElementById('joy' + idx);
+  const knob = base.querySelector('.stick');
+  const js = joysticks[idx];
+  const getR = () => base.clientWidth * 0.34;
+  function reset() {
+    js.x = 0; js.y = 0; js.active = false; js.pid = null;
+    knob.style.transform = 'translate(-50%, -50%)';
+  }
+  function move(e) {
+    const R = getR();
+    const r = base.getBoundingClientRect();
+    const dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+    const a = Math.atan2(dy, dx), c = Math.min(Math.hypot(dx, dy), R);
+    knob.style.transform = `translate(calc(-50% + ${Math.cos(a) * c}px), calc(-50% + ${Math.sin(a) * c}px))`;
+    const m = c / R;
+    if (m < 0.15) { js.x = 0; js.y = 0; }            // zona morta
+    else { js.x = Math.cos(a) * m; js.y = Math.sin(a) * m; }
+  }
+  base.addEventListener('pointerdown', e => {
+    e.preventDefault(); initAudio();
+    js.pid = e.pointerId; js.active = true;
+    base.setPointerCapture(e.pointerId); move(e);
+  });
+  base.addEventListener('pointermove', e => { if (e.pointerId === js.pid) move(e); });
+  const end = e => { if (e.pointerId === js.pid) reset(); };
+  base.addEventListener('pointerup', end);
+  base.addEventListener('pointercancel', end);
+  base.addEventListener('lostpointercapture', end);
+}
+setupJoystick(0); setupJoystick(1);
+
+// Tocca ovunque durante i dialoghi per andare avanti
+dialogueBox.addEventListener('click', e => {
+  if (state.bossDialogueActive) { e.preventDefault(); handleDialogueAdvance(); }
+});
+
 // ==================== DIALOGO BOSS ====================
 function showDialogueLine(index) {
   if (!state.currentDialogue) return;
@@ -1226,8 +1378,8 @@ function endBossDialogue() {
 // ==================== DIALOGO INTRODUTTIVO (solo la prima volta) ====================
 function buildIntroLines(numPlayers) {
   const moveLine = numPlayers === 2
-    ? 'Giocatore 1 si muove con W A S D, giocatore 2 con le frecce. Non dovete mirare: sparate da soli allo zombie più vicino che riuscite a colpire.'
-    : 'Ti muovi con W A S D. Non devi mirare: spari da solo allo zombie più vicino che riesci a colpire.';
+    ? 'Giocatore 1 si muove con W A S D, giocatore 2 con le frecce (oppure con i due joystick sullo schermo). Non dovete mirare: sparate da soli allo zombie più vicino che riuscite a colpire.'
+    : 'Ti muovi con W A S D o con il joystick sullo schermo. Non devi mirare: spari da solo allo zombie più vicino che riesci a colpire.';
   const who = numPlayers === 2 ? 'voi' : 'te';
   return [
     { speaker: 'guide', text: numPlayers === 2 ? 'Ehi, svegliatevi! Benvenuti nell\'Arena Neon.' : 'Ehi, svegliati! Benvenuto nell\'Arena Neon.' },
@@ -1370,6 +1522,19 @@ function startGame(numPlayers) {
   state.maxZombies = numPlayers === 1 ? CONFIG.maxZombies1P : CONFIG.maxZombies2P;
   state.p1Earned = 0; state.p2Earned = 0;
   mainMenu.style.display = 'none'; gameOverScreen.classList.remove('open'); gameWrap.classList.add('active');
+  fitGameToScreen();
+  // Su mobile: schermo intero + blocco in orizzontale (dove supportato)
+  if (touchMQ.matches) {
+    try {
+      const el = document.documentElement;
+      if (!document.fullscreenElement && el.requestFullscreen) {
+        el.requestFullscreen().then(() => { try { screen.orientation.lock('landscape').catch(() => {}); } catch (e) {} }).catch(() => {});
+      }
+    } catch (e) {}
+  }
+  joystickLayer.classList.toggle('two', numPlayers === 2);
+  joysticks.forEach(j => { j.x = 0; j.y = 0; j.active = false; j.pid = null; });
+  document.querySelectorAll('.joy .stick').forEach(s => s.style.transform = 'translate(-50%, -50%)');
 
   state.players = [];
   state.players.push({
@@ -1377,19 +1542,22 @@ function startGame(numPlayers) {
     size: CONFIG.playerSize, lives: CONFIG.playerMaxLives, score: 0,
     charId: settings.characterP1, color: '#0ff', colorHex: '#00ffff', facing: 1, moving: false, isGhost: false, invulnUntil: 0,
     keys: { up: 'w', down: 's', left: 'a', right: 'd' }, bulletType: wallet.p1Active,
-    ammo: CONFIG.magazineSize, maxAmmo: CONFIG.magazineSize, reloading: false, reloadTimer: 0
+    ammo: CONFIG.magazineSize, maxAmmo: CONFIG.magazineSize, reloading: false, reloadTimer: 0,
+    combo: 0, comboTimer: 0, bestCombo: 0
   });
   if (numPlayers === 2) {
     state.players.push({
       id: 1, x: W/2 + 60, y: H/2 + 80, size: CONFIG.playerSize, lives: CONFIG.playerMaxLives, score: 0,
       charId: settings.characterP2, color: '#4af', colorHex: '#4af', facing: 1, moving: false, isGhost: false, invulnUntil: 0,
       keys: { up: 'arrowup', down: 'arrowdown', left: 'arrowleft', right: 'arrowright' }, bulletType: wallet.p2Active,
-      ammo: CONFIG.magazineSize, maxAmmo: CONFIG.magazineSize, reloading: false, reloadTimer: 0
+      ammo: CONFIG.magazineSize, maxAmmo: CONFIG.magazineSize, reloading: false, reloadTimer: 0,
+      combo: 0, comboTimer: 0, bestCombo: 0
     });
   }
 
   state.zombies = []; state.bullets = []; state.bossBullets = []; state.particles = []; state.walls = []; state.powerups = []; state.fireStones = []; state.shockwaves = [];
-  state.running = true; state.lastTime = performance.now(); state.gameStartTime = performance.now();
+  state.running = true; state.lastTime = performance.now(); state.gameStartTime = performance.now(); stepAcc = 0;
+  SPD = touchMQ.matches ? CONFIG.mobileSpeedMul : 1;
   state.difficultyLevel = 0; state.levelTime = 0; state.spawnInterval = CONFIG.zombieBaseSpawn; state.zombieSpeedBonus = 0;
   state.lastSpawn = 0; state.lastShot = [0, 0]; state.boss = null; state.bossDialogIndex = 0;
   state.bossDialogueActive = false; state.bossSpawnPause = 0; state.paused = false; state.currentDialogue = null; state.animTime = 0;
@@ -1424,6 +1592,7 @@ function endGame() {
     let best = parseInt(localStorage.getItem('zombieNeonBest1P') || '0');
     if (p1.score > best) { best = p1.score; localStorage.setItem('zombieNeonBest1P', best); content.innerHTML += `<p style="color:#ff0; text-shadow:0 0 15px #ff0; margin-top:15px;">🏆 NUOVO RECORD!</p>`; }
     content.innerHTML += `<p>Record: <span class="highlight">${best}</span></p>`;
+    if (p1.bestCombo >= 2) content.innerHTML += `<p style="color:#f90; text-shadow:0 0 12px #f90;">🔥 Combo massima: x${p1.bestCombo}</p>`;
   } else {
     const p1 = state.players[0]; const p2 = state.players[1]; const total = p1.score + p2.score;
     content.innerHTML = `<p><span class="p1color">Giocatore 1:</span> ${p1.score} punti <span style="color:#ff0; font-size: 0.85em;">(🪙 +${state.p1Earned})</span></p><p><span class="p2color">Giocatore 2:</span> ${p2.score} punti <span style="color:#ff0; font-size: 0.85em;">(🪙 +${state.p2Earned})</span></p><p style="margin-top: 15px; font-size: 1.2em;">TOTALE: <span class="highlight">${total}</span></p>`;
@@ -1470,17 +1639,25 @@ function spawnZombies() {
   for (let i = 0; i < CONFIG.zombiesPerSpawn; i++) {
     if (state.zombies.length >= state.maxZombies) break;
     let x, y, valid = false, attempts = 0;
-    while (!valid && attempts < 20) {
+    let bestX = null, bestY = null, bestD = -1;
+    const spawnTargets = state.players.filter(p => !p.isGhost);
+    while (!valid && attempts < 30) {
       attempts++;
       const side = Math.floor(Math.random() * 4); const pad = 40;
       if (side === 0) { x = Math.random() * W; y = -pad; }
       else if (side === 1) { x = W + pad; y = Math.random() * H; }
       else if (side === 2) { x = Math.random() * W; y = H + pad; }
       else { x = -pad; y = Math.random() * H; }
-      valid = true;
-      for (const wall of state.walls) { if (x + 30 > wall.x && x - 30 < wall.x + wall.w && y + 30 > wall.y && y - 30 < wall.y + wall.h) { valid = false; break; } }
+      let free = true;
+      for (const wall of state.walls) { if (x + 30 > wall.x && x - 30 < wall.x + wall.w && y + 30 > wall.y && y - 30 < wall.y + wall.h) { free = false; break; } }
+      if (!free) continue;
+      // niente spawn vicino al giocatore (es. se è in un angolo): servono almeno zombieSpawnMinDist px
+      const dNear = spawnTargets.length ? Math.min(...spawnTargets.map(p => Math.hypot(p.x - x, p.y - y))) : Infinity;
+      if (dNear >= CONFIG.zombieSpawnMinDist) valid = true;
+      else if (dNear > bestD) { bestD = dNear; bestX = x; bestY = y; }
     }
-    if (!valid) continue;
+    // se nessun punto rispetta la distanza minima, usa il più lontano trovato
+    if (!valid) { if (bestX === null) continue; x = bestX; y = bestY; }
 
     // SCEGLI IL TIPO DI ZOMBIE
     // Ogni tipo compare solo dal suo livello in poi (livello mostrato a schermo = difficultyLevel + 1)
@@ -1521,11 +1698,24 @@ function spawnDeathParticles(x, y, color1='#0f0', color2='#9f0', count=14) {
   }
 }
 
+// Moltiplicatore punti in base alla combo attuale (1x, 1.5x, 2x ... fino a comboMaxMult)
+function comboMultiplier(combo) {
+  const tier = Math.floor(combo / CONFIG.comboStep); // 0 per i primi colpi
+  return Math.min(CONFIG.comboMaxMult, 1 + tier * 0.5);
+}
+
 function killZombie(z, ownerId) {
-  const points = 1 + Math.floor(Math.random() * 4);
+  const basePoints = 1 + Math.floor(Math.random() * 4);
   const owner = state.players.find(p => p.id === ownerId);
-  if (owner) { owner.score += points; if (ownerId === 0) state.p1Earned += points; else state.p2Earned += points; }
-  
+  if (owner) {
+    // Combo: ogni uccisione entro comboWindow prolunga la catena e fa salire il moltiplicatore
+    owner.combo = (owner.combo || 0) + 1;
+    owner.comboTimer = CONFIG.comboWindow;
+    if (owner.combo > (owner.bestCombo || 0)) owner.bestCombo = owner.combo;
+    const points = Math.round(basePoints * comboMultiplier(owner.combo));
+    owner.score += points; if (ownerId === 0) state.p1Earned += points; else state.p2Earned += points;
+  }
+
   spawnDeathParticles(z.x, z.y);
   playZombieDeathSound();
 
@@ -1567,8 +1757,14 @@ function hasLineOfSight(x1, y1, x2, y2) {
 // ==================== UPDATE ====================
 function update(dt, now) {
   if (state.paused) return;
+  if (touchMQ.matches && portraitMQ.matches) return; // in verticale il gioco è in pausa
   state.animTime += dt;
   if (state.transition) { updateTransition(dt); return; }
+
+  // Decadimento della combo: se non uccidi entro comboWindow, la catena si azzera
+  for (const p of state.players) {
+    if (p.comboTimer > 0) { p.comboTimer -= dt; if (p.comboTimer <= 0) { p.comboTimer = 0; p.combo = 0; } }
+  }
 
   // Il tempo che fa salire i livelli si ferma mentre c'è un boss in campo
   if (!state.boss) state.levelTime += dt;
@@ -1590,10 +1786,19 @@ function update(dt, now) {
     let dx = 0, dy = 0;
     if (state.keys[p.keys.up]) dy -= 1; if (state.keys[p.keys.down]) dy += 1;
     if (state.keys[p.keys.left]) dx -= 1; if (state.keys[p.keys.right]) dx += 1;
-    if (dx !== 0 || dy !== 0) { const len = Math.hypot(dx, dy); dx /= len; dy /= len; p.moving = true; } else { p.moving = false; }
+
+    // Joystick analogico (ha la precedenza sulla tastiera quando è in uso)
+    const js = joysticks[p.id];
+    if (js && js.active && (js.x !== 0 || js.y !== 0)) { dx = js.x; dy = js.y; }
+
+    if (dx !== 0 || dy !== 0) {
+      const len = Math.hypot(dx, dy);
+      if (len > 1) { dx /= len; dy /= len; }   // velocità proporzionale all'inclinazione
+      p.moving = true;
+    } else { p.moving = false; }
     if (dx < 0) p.facing = -1; else if (dx > 0) p.facing = 1;
 
-    let newX = p.x + dx * CONFIG.playerSpeed; let newY = p.y + dy * CONFIG.playerSpeed;
+    let newX = p.x + dx * CONFIG.playerSpeed * SPD; let newY = p.y + dy * CONFIG.playerSpeed * SPD;
     let canMoveX = true; let canMoveY = true;
     for (const wall of state.walls) {
       if (newX + p.size/2 > wall.x && newX - p.size/2 < wall.x + wall.w && p.y + p.size/2 > wall.y && p.y - p.size/2 < wall.y + wall.h) canMoveX = false;
@@ -1764,7 +1969,7 @@ function update(dt, now) {
 
   // SHOCKWAVES (Onde del Bruto)
   for (let i = state.shockwaves.length - 1; i >= 0; i--) {
-    const sw = state.shockwaves[i]; sw.radius += CONFIG.shockwaveSpeed * dt;
+    const sw = state.shockwaves[i]; sw.radius += CONFIG.shockwaveSpeed * SPD * dt;
     // l'onda sparisce solo dopo aver attraversato tutta l'arena
     if (sw.radius > Math.hypot(W, H) + 40) { state.shockwaves.splice(i, 1); continue; }
     for (const p of alivePlayers) {
@@ -1865,8 +2070,8 @@ function update(dt, now) {
       if (!foundPath) continue; 
     }
     
-    z.x += Math.cos(ang) * z.speed;
-    z.y += Math.sin(ang) * z.speed;
+    z.x += Math.cos(ang) * z.speed * SPD;
+    z.y += Math.sin(ang) * z.speed * SPD;
 
     for (const p of alivePlayers) {
       if (now > p.invulnUntil && Math.hypot(z.x - p.x, z.y - p.y) < (z.size + p.size) / 2) {
@@ -1893,7 +2098,7 @@ function update(dt, now) {
       let target = alivePlayers[0]; let minDist = Math.hypot(target.x - boss.x, target.y - boss.y);
       for (const p of alivePlayers) { const d = Math.hypot(p.x - boss.x, p.y - boss.y); if (d < minDist) { minDist = d; target = p; } }
       const ang = Math.atan2(target.y - boss.y, target.x - boss.x);
-      const newBX = boss.x + Math.cos(ang) * boss.speed; const newBY = boss.y + Math.sin(ang) * boss.speed;
+      const newBX = boss.x + Math.cos(ang) * boss.speed * SPD; const newBY = boss.y + Math.sin(ang) * boss.speed * SPD;
       let bCanMove = true;
       for (const wall of state.walls) { if (newBX + boss.size/2 > wall.x && newBX - boss.size/2 < wall.x + wall.w && newBY + boss.size/2 > wall.y && newBY - boss.size/2 < wall.y + wall.h) { bCanMove = false; break; } }
       if (bCanMove) { boss.x = newBX; boss.y = newBY; } else { let canSlideX = true, canSlideY = true; for (const wall of state.walls) { if (newBX + boss.size/2 > wall.x && newBX - boss.size/2 < wall.x + wall.w && boss.y + boss.size/2 > wall.y && boss.y - boss.size/2 < wall.y + wall.h) canSlideX = false; if (boss.x + boss.size/2 > wall.x && boss.x - boss.size/2 < wall.x + wall.w && newBY + boss.size/2 > wall.y && newBY - boss.size/2 < wall.y + wall.h) canSlideY = false; } if (canSlideX) boss.x = newBX; if (canSlideY) boss.y = newBY; }
@@ -1905,7 +2110,7 @@ function update(dt, now) {
         for (const p of alivePlayers) { const d = Math.hypot(p.x - boss.x, p.y - boss.y); if (d < minDist) { minDist = d; target = p; } }
         let hasLineOfSight = true; const steps = 20;
         for (let s = 1; s < steps; s++) { const checkX = boss.x + (target.x - boss.x) * (s / steps); const checkY = boss.y + (target.y - boss.y) * (s / steps); for (const wall of state.walls) { if (checkX > wall.x && checkX < wall.x + wall.w && checkY > wall.y && checkY < wall.y + wall.h) { hasLineOfSight = false; break; } } if (!hasLineOfSight) break; }
-        if (hasLineOfSight) { const angle = Math.atan2(target.y - boss.y, target.x - boss.x); state.bossBullets.push({ x: boss.x, y: boss.y, vx: Math.cos(angle) * 6, vy: Math.sin(angle) * 6, life: 200 }); boss.lastShot = now; }
+        if (hasLineOfSight) { const angle = Math.atan2(target.y - boss.y, target.x - boss.x); state.bossBullets.push({ x: boss.x, y: boss.y, vx: Math.cos(angle) * 6 * SPD, vy: Math.sin(angle) * 6 * SPD, life: 200 / SPD }); boss.lastShot = now; }
       }
     }
   }
@@ -2244,6 +2449,27 @@ function drawShockwaves() {
   ctx.restore();
 }
 
+// Indicatore combo: appare solo da 2 uccisioni incatenate in su.
+// Il colore scala con il moltiplicatore e la scritta "pulsa" quanto più la combo è alta.
+function drawCombo(p, x, y) {
+  if (!p || p.combo < 2) return;
+  const mult = comboMultiplier(p.combo);
+  const colors = ['#0ff', '#0f0', '#ff0', '#f90', '#f0f'];
+  const tier = Math.min(colors.length - 1, Math.floor(p.combo / CONFIG.comboStep));
+  const col = colors[tier];
+  // barra di tempo residuo della combo
+  const frac = Math.max(0, Math.min(1, p.comboTimer / CONFIG.comboWindow));
+  ctx.save();
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.shadowBlur = 12; ctx.shadowColor = col; ctx.fillStyle = col;
+  ctx.font = 'bold 15px "Segoe UI", sans-serif';
+  const label = `🔥 COMBO x${p.combo}` + (mult > 1 ? `  (×${mult})` : '');
+  ctx.fillText(label, x, y);
+  // barretta che si svuota mentre la finestra combo scade
+  ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect(x, y + 17, 120, 4);
+  ctx.fillStyle = col; ctx.fillRect(x, y + 17, 120 * frac, 4);
+  ctx.restore();
+}
+
 function drawHUD() {
   ctx.save();
   ctx.font = 'bold 20px "Segoe UI", sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.shadowBlur = 15;
@@ -2255,6 +2481,7 @@ function drawHUD() {
     ctx.fillStyle = bt.color; ctx.shadowColor = bt.glowColor; ctx.font = 'bold 14px "Segoe UI", sans-serif'; ctx.fillText(`${bt.icon} ${bt.name}`, 20, 46);
     // Munizioni
     ctx.fillStyle = p1.reloading ? '#f00' : '#0f0'; ctx.fillText(`🔫 ${p1.reloading ? 'RICARICA...' : p1.ammo + '/' + p1.maxAmmo}`, 20, 70);
+    drawCombo(p1, 20, 94);
   } else {
     const p1 = state.players[0]; const p2 = state.players[1];
     ctx.fillStyle = '#f66'; ctx.shadowColor = '#f66'; ctx.fillText(`P1: ${p1.score}`, 20, 20);
@@ -2266,6 +2493,8 @@ function drawHUD() {
     // Munizioni P1/P2
     ctx.fillStyle = '#0f0'; ctx.fillText(`P1 🔫 ${p1.reloading ? 'R' : p1.ammo}`, 20, 94);
     ctx.fillText(`P2 🔫 ${p2.reloading ? 'R' : p2.ammo}`, 20, 114);
+    drawCombo(p1, 150, 94);
+    drawCombo(p2, 150, 114);
   }
 
   ctx.textAlign = 'right'; ctx.font = '24px serif';
@@ -2311,13 +2540,36 @@ function render(now) {
   }
 }
 
+// Passo fisso a 60Hz: la velocità del gioco non dipende più dai Hz dello schermo
+// (su telefoni a 90/120Hz prima tutto andava il doppio più veloce)
+const STEP = 1000 / 60;
+let stepAcc = 0;
 function gameLoop(now) {
   if (!state.running) return;
   const dt = now - state.lastTime; state.lastTime = now;
-  update(dt, now);
+  stepAcc += Math.min(dt, 100);
+  let steps = 0;
+  while (stepAcc >= STEP && steps < 6 && state.running) { update(STEP, now); stepAcc -= STEP; steps++; }
+  if (steps === 6) stepAcc = 0;
   if (state.running) render(now);
   requestAnimationFrame(gameLoop);
 }
+
+// ==================== RESPONSIVE: adatta il gioco a qualsiasi schermo ====================
+// Il gioco gira sempre a risoluzione interna W x H (900x600); qui lo scaliamo via CSS
+// per riempire la finestra mantenendo le proporzioni. Essendo il gioco a tastiera,
+// non serve rimappare coordinate del mouse.
+function fitGameToScreen() {
+  const pad = touchMQ.matches ? 0 : 16; // su touch usa tutto lo schermo
+  const scale = Math.min(
+    (window.innerWidth  - pad * 2) / W,
+    (window.innerHeight - pad * 2) / H
+  );
+  gameWrap.style.transform = 'scale(' + Math.max(0.2, scale) + ')';
+}
+window.addEventListener('resize', fitGameToScreen);
+window.addEventListener('orientationchange', fitGameToScreen);
+fitGameToScreen();
 
 window.addEventListener('load', () => { if (settings.audioOn) { menuMusic.volume = settings.musicVolume; menuMusic.play().catch(() => {}); } drawMascot(); });
 document.addEventListener('click', () => { initAudio(); if (settings.audioOn && menuMusic.paused) startMusic(); }, { once: true });
