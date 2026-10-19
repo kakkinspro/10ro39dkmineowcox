@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Zombie Neon Survival</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -20,6 +23,7 @@
     touch-action: none;
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
+    padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
   }
 
   #mainMenu {
@@ -555,6 +559,7 @@
   }
 
   /* ==================== JOYSTICK ANALOGICO ==================== */
+  #safeProbe { position: fixed; left: 0; top: 0; width: 0; height: 0; visibility: hidden; pointer-events: none; padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
   .menuBtns { display: flex; flex-direction: column; align-items: center; position: relative; z-index: 2; }
   #joystickLayer { position: fixed; inset: 0; display: none; z-index: 60; pointer-events: none; }
   @media (pointer: coarse) {
@@ -601,11 +606,11 @@
       padding: 10px 22px; font-size: 1em; letter-spacing: 2px;
       min-width: 0; margin: 4px 0; border-width: 2px; border-radius: 10px;
     }
-    #mascot { width: 36px; height: 48px; bottom: 10px; right: 12px; }
-    #version { bottom: 8px; right: 60px; font-size: 0.7em; }
-    #bestRecordMenu { bottom: 8px; left: 12px; font-size: 0.7em; line-height: 1.4; letter-spacing: 1px; }
+    #mascot { width: 36px; height: 48px; bottom: 10px; right: calc(12px + env(safe-area-inset-right, 0px)); }
+    #version { bottom: 8px; right: calc(60px + env(safe-area-inset-right, 0px)); font-size: 0.7em; }
+    #bestRecordMenu { bottom: 8px; left: calc(12px + env(safe-area-inset-left, 0px)); font-size: 0.7em; line-height: 1.4; letter-spacing: 1px; }
 
-    .modal { padding: 8px; }
+    .modal { padding: max(8px, env(safe-area-inset-top, 0px)) max(8px, env(safe-area-inset-right, 0px)) max(8px, env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px)); }
     .modalBox { padding: 14px 18px; max-height: 96vh; max-height: 96dvh; border-radius: 14px; }
     .modalBox h2 { font-size: 1.2em; margin-bottom: 10px; letter-spacing: 2px; }
     .settingRow { padding: 6px 0; }
@@ -644,6 +649,7 @@
 </head>
 <body>
 
+<div id="safeProbe"></div>
 <div id="mainMenu">
   <div id="menuBg"></div>
   <div id="menuOverlay"></div>
@@ -768,8 +774,10 @@
 
 <script>
 // ==================== CONFIG ====================
-const W = 900, H = 600;
+let W = 900, H = 600; // su mobile vengono ricalcolati da setArenaSize()
 const CONFIG = {
+  mobilePlayerSpeedMul: 0.85, // velocità del solo giocatore su mobile (1 = come PC)
+  mobileViewH: 540,        // altezza logica dell'arena su mobile (più bassa = tutto appare più grande)
   mobileSpeedMul: 0.75,    // moltiplicatore velocità su mobile (giocatore, zombie, boss, onde): 1 = uguale al PC
   playerSpeed: 3.8,        // px per frame a 60Hz (prima 4.6)
   playerSize: 28,
@@ -815,7 +823,8 @@ const CONFIG = {
   bossSpeedMax: 6.0,
   bossSpeedBonusPerCycle: 0.2,
   bossShootInterval: 8000,
-  bossPoints: 20,
+  bossPoints: 200,          // punti totali del boss (prima 20)
+  pointsMul: 4,            // moltiplicatore sui punti degli zombie e del bonus cuore (prima 1)
   bossAutoDistance: 220,
   bossPostKillPause: 5000,
   
@@ -861,11 +870,11 @@ loadCharacterSprites();
 
 const BULLETS = {
   base: { id: 'base', name: 'Base', icon: '🔫', color: '#ff0', glowColor: '#ff0', cost: 0, damage: 2, desc: 'Proiettile standard' },
-  fire: { id: 'fire', name: 'Fiamma', icon: '🔥', color: '#ff6600', glowColor: '#ff6600', cost: 100, damage: 4, burnDuration: 3000, burnDPS: 2, desc: 'Danno 4 + incendio 3s' },
-  ice: { id: 'ice', name: 'Ghiaccio', icon: '❄️', color: '#66ccff', glowColor: '#66ccff', cost: 125, damage: 3, slowFactor: 0.4, slowDuration: 2500, desc: 'Danno 3 + rallenta 60%' },
-  electric: { id: 'electric', name: 'Elettrico', icon: '⚡', color: '#00ffff', glowColor: '#00ffff', cost: 175, damage: 10, chain: 3, chainRange: 180, desc: 'Danno 10 + chain a 3 zombie' },
-  pierce: { id: 'pierce', name: 'Perforante', icon: '🎯', color: '#cc00ff', glowColor: '#cc00ff', cost: 250, damage: 8, pierceCount: 5, desc: 'Danno 8 + attraversa 5 nemici' },
-  explosive: { id: 'explosive', name: 'Esplosivo', icon: '💥', color: '#ff0044', glowColor: '#ff0044', cost: 350, damage: 15, splashRadius: 90, splashDamage: 4, desc: 'Danno 15 + esplosione 90px' },
+  fire: { id: 'fire', name: 'Fiamma', icon: '🔥', color: '#ff6600', glowColor: '#ff6600', cost: 400, damage: 4, burnDuration: 3000, burnDPS: 2, desc: 'Danno 4 + incendio 3s' },
+  ice: { id: 'ice', name: 'Ghiaccio', icon: '❄️', color: '#66ccff', glowColor: '#66ccff', cost: 500, damage: 3, slowFactor: 0.4, slowDuration: 2500, desc: 'Danno 3 + rallenta 60%' },
+  electric: { id: 'electric', name: 'Elettrico', icon: '⚡', color: '#00ffff', glowColor: '#00ffff', cost: 700, damage: 10, chain: 3, chainRange: 180, desc: 'Danno 10 + chain a 3 zombie' },
+  pierce: { id: 'pierce', name: 'Perforante', icon: '🎯', color: '#cc00ff', glowColor: '#cc00ff', cost: 1000, damage: 8, pierceCount: 5, desc: 'Danno 8 + attraversa 5 nemici' },
+  explosive: { id: 'explosive', name: 'Esplosivo', icon: '💥', color: '#ff0044', glowColor: '#ff0044', cost: 1400, damage: 15, splashRadius: 90, splashDamage: 4, desc: 'Danno 15 + esplosione 90px' },
 };
 
 const BOSS_DIALOGUES = [
@@ -1282,6 +1291,7 @@ const joysticks = [{ x: 0, y: 0, active: false, pid: null }, { x: 0, y: 0, activ
 const joystickLayer = document.getElementById('joystickLayer');
 const touchMQ = window.matchMedia('(pointer: coarse)');
 const portraitMQ = window.matchMedia('(orientation: portrait)');
+let PSPD = 1; // moltiplicatore velocità del giocatore (mobile)
 let SPD = 1; // moltiplicatore velocità attivo (CONFIG.mobileSpeedMul su touch, altrimenti 1)
 
 function setupJoystick(idx) {
@@ -1464,8 +1474,8 @@ function enterCastleInterior() {
   state.area = 'castle'; state.castle = null;
   state.zombies = []; state.bullets = []; state.bossBullets = []; state.fireStones = []; state.shockwaves = []; state.powerups = []; state.particles = [];
   state.walls = [
-    { x: 200, y: 190, w: 44, h: 44, pillar: true }, { x: 656, y: 190, w: 44, h: 44, pillar: true },
-    { x: 200, y: 370, w: 44, h: 44, pillar: true }, { x: 656, y: 370, w: 44, h: 44, pillar: true }
+    { x: 200 + (W - 900) / 2, y: 190, w: 44, h: 44, pillar: true }, { x: 656 + (W - 900) / 2, y: 190, w: 44, h: 44, pillar: true },
+    { x: 200 + (W - 900) / 2, y: 370, w: 44, h: 44, pillar: true }, { x: 656 + (W - 900) / 2, y: 370, w: 44, h: 44, pillar: true }
   ];
   const nowT = performance.now();
   state.players.forEach((p, i) => {
@@ -1489,7 +1499,7 @@ function generateWalls() {
       if (isHorizontal) { w = length; h = CONFIG.wallThickness; } else { w = CONFIG.wallThickness; h = length; }
       
       // MARGINE AUMENTATO: Evita i bordi (dove spawnano gli zombie)
-      const margin = 150;
+      const margin = H >= 600 ? 150 : Math.round(H * 0.22);
       x = margin + Math.random() * (W - margin * 2 - w);
       y = margin + Math.random() * (H - margin * 2 - h);
       
@@ -1522,6 +1532,7 @@ function startGame(numPlayers) {
   state.maxZombies = numPlayers === 1 ? CONFIG.maxZombies1P : CONFIG.maxZombies2P;
   state.p1Earned = 0; state.p2Earned = 0;
   mainMenu.style.display = 'none'; gameOverScreen.classList.remove('open'); gameWrap.classList.add('active');
+  setArenaSize();
   fitGameToScreen();
   // Su mobile: schermo intero + blocco in orizzontale (dove supportato)
   if (touchMQ.matches) {
@@ -1558,6 +1569,7 @@ function startGame(numPlayers) {
   state.zombies = []; state.bullets = []; state.bossBullets = []; state.particles = []; state.walls = []; state.powerups = []; state.fireStones = []; state.shockwaves = [];
   state.running = true; state.lastTime = performance.now(); state.gameStartTime = performance.now(); stepAcc = 0;
   SPD = touchMQ.matches ? CONFIG.mobileSpeedMul : 1;
+  PSPD = touchMQ.matches ? CONFIG.mobilePlayerSpeedMul : 1;
   state.difficultyLevel = 0; state.levelTime = 0; state.spawnInterval = CONFIG.zombieBaseSpawn; state.zombieSpeedBonus = 0;
   state.lastSpawn = 0; state.lastShot = [0, 0]; state.boss = null; state.bossDialogIndex = 0;
   state.bossDialogueActive = false; state.bossSpawnPause = 0; state.paused = false; state.currentDialogue = null; state.animTime = 0;
@@ -1705,7 +1717,7 @@ function comboMultiplier(combo) {
 }
 
 function killZombie(z, ownerId) {
-  const basePoints = 1 + Math.floor(Math.random() * 4);
+  const basePoints = (1 + Math.floor(Math.random() * 4)) * CONFIG.pointsMul;
   const owner = state.players.find(p => p.id === ownerId);
   if (owner) {
     // Combo: ogni uccisione entro comboWindow prolunga la catena e fa salire il moltiplicatore
@@ -1798,7 +1810,7 @@ function update(dt, now) {
     } else { p.moving = false; }
     if (dx < 0) p.facing = -1; else if (dx > 0) p.facing = 1;
 
-    let newX = p.x + dx * CONFIG.playerSpeed * SPD; let newY = p.y + dy * CONFIG.playerSpeed * SPD;
+    let newX = p.x + dx * CONFIG.playerSpeed * PSPD; let newY = p.y + dy * CONFIG.playerSpeed * PSPD;
     let canMoveX = true; let canMoveY = true;
     for (const wall of state.walls) {
       if (newX + p.size/2 > wall.x && newX - p.size/2 < wall.x + wall.w && p.y + p.size/2 > wall.y && p.y - p.size/2 < wall.y + wall.h) canMoveX = false;
@@ -1933,8 +1945,9 @@ function update(dt, now) {
             p.lives++; // Cura
           } else {
             // Se hai già 2 cuori, converti in 5 punti
-            p.score += 5;
-            if (p.id === 0) state.p1Earned += 5; else state.p2Earned += 5;
+            const bonus = 5 * CONFIG.pointsMul;
+            p.score += bonus;
+            if (p.id === 0) state.p1Earned += bonus; else state.p2Earned += bonus;
           }
           collected = true; 
           break;
@@ -2317,7 +2330,7 @@ function drawCastle(now) {
 
 // Interno del castello (nuovo posto)
 function drawCastleInterior(now) {
-  const ts = 30;
+  const ts = 30; const ox = (W - 900) / 2; // l'arena mobile è più larga: centra gli elementi fissi
   for (let y = 0; y < H; y += ts) for (let x = 0; x < W; x += ts) {
     const v = (((x * 73856093) ^ (y * 19349663)) >>> 0) % 5;
     ctx.fillStyle = ['#1d1f33', '#212439', '#191b2e', '#23263d', '#1b1d31'][v]; ctx.fillRect(x, y, ts, ts);
@@ -2334,14 +2347,14 @@ function drawCastleInterior(now) {
   }
   ctx.fillStyle = '#6c72a0'; ctx.fillRect(0, 0, W, 3); ctx.fillStyle = '#14152a'; ctx.fillRect(0, 62, W, 4);
   // stendardi appesi alla parete (ai lati, così non coprono la scritta dell'HUD)
-  for (const bx of [215, 685]) {
+  for (const bx of [215 + ox, 685 + ox]) {
     ctx.fillStyle = '#c0c'; ctx.fillRect(bx - 12, 3, 24, 46);
     ctx.fillStyle = '#ffd700'; ctx.fillRect(bx - 12, 3, 24, 3);
     ctx.fillStyle = '#80f'; ctx.fillRect(bx - 12, 49, 8, 6); ctx.fillRect(bx + 4, 49, 8, 6);
     ctx.fillStyle = '#ffd700'; ctx.fillRect(bx - 3, 16, 6, 16);
   }
   // torce con luce tremolante
-  for (const tx of [110, 300, 600, 790]) {
+  for (const tx of [110, 300, 600, 790].map(v => v + ox)) {
     const fl = 12 + 4 * Math.sin(now * 0.02 + tx);
     const g = ctx.createRadialGradient(tx, 80, 4, tx, 80, 130);
     g.addColorStop(0, 'rgba(255,140,0,0.22)'); g.addColorStop(1, 'rgba(255,140,0,0)');
@@ -2516,10 +2529,19 @@ function drawHUD() {
   ctx.restore();
 }
 
+// Sfondo "cover": riempie l'arena senza deformare l'immagine (utile quando l'arena è più larga)
+function drawBgCover() {
+  const ir = bgImage.width / bgImage.height, r = W / H;
+  let sw, sh, sx, sy;
+  if (ir > r) { sh = bgImage.height; sw = sh * r; sx = (bgImage.width - sw) / 2; sy = 0; }
+  else { sw = bgImage.width; sh = sw / r; sx = 0; sy = (bgImage.height - sh) / 2; }
+  ctx.drawImage(bgImage, sx, sy, sw, sh, 0, 0, W, H);
+}
+
 function render(now) {
   ctx.clearRect(0, 0, W, H);
   if (state.area === 'castle') { drawCastleInterior(now); }
-  else if (bgLoaded) { ctx.drawImage(bgImage, 0, 0, W, H); ctx.fillStyle = 'rgba(0,0,20,0.45)'; ctx.fillRect(0, 0, W, H); }
+  else if (bgLoaded) { drawBgCover(); ctx.fillStyle = 'rgba(0,0,20,0.45)'; ctx.fillRect(0, 0, W, H); }
   else { ctx.fillStyle = '#050510'; ctx.fillRect(0, 0, W, H); ctx.strokeStyle = 'rgba(0,255,255,0.15)'; ctx.lineWidth = 1; for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); } for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); } }
   
   drawParticles();
@@ -2559,16 +2581,45 @@ function gameLoop(now) {
 // Il gioco gira sempre a risoluzione interna W x H (900x600); qui lo scaliamo via CSS
 // per riempire la finestra mantenendo le proporzioni. Essendo il gioco a tastiera,
 // non serve rimappare coordinate del mouse.
+function getInsets() {
+  const cs = getComputedStyle(document.getElementById('safeProbe'));
+  return { t: parseFloat(cs.paddingTop) || 0, r: parseFloat(cs.paddingRight) || 0, b: parseFloat(cs.paddingBottom) || 0, l: parseFloat(cs.paddingLeft) || 0 };
+}
+// Su mobile l'arena si adatta alla forma dello schermo (niente barre nere) ed è un po' più bassa,
+// così il gioco appare più grande. Su PC resta 900x600.
+function setArenaSize() {
+  if (touchMQ.matches) {
+    const ins = getInsets();
+    const aw = window.innerWidth - ins.l - ins.r, ah = window.innerHeight - ins.t - ins.b;
+    const aspect = Math.max(aw, ah) / Math.max(1, Math.min(aw, ah)); // sempre in orizzontale
+    H = CONFIG.mobileViewH;
+    W = Math.max(600, Math.min(1100, Math.round(H * aspect)));
+  } else { W = 900; H = 600; }
+  canvas.width = W; canvas.height = H;
+}
 function fitGameToScreen() {
-  const pad = touchMQ.matches ? 0 : 16; // su touch usa tutto lo schermo
+  const touch = touchMQ.matches;
+  const pad = touch ? 0 : 16; // su touch usa tutto lo schermo sicuro
+  const ins = touch ? getInsets() : { t: 0, r: 0, b: 0, l: 0 };
   const scale = Math.min(
-    (window.innerWidth  - pad * 2) / W,
-    (window.innerHeight - pad * 2) / H
+    (window.innerWidth  - ins.l - ins.r - pad * 2) / W,
+    (window.innerHeight - ins.t - ins.b - pad * 2) / H
   );
   gameWrap.style.transform = 'scale(' + Math.max(0.2, scale) + ')';
 }
-window.addEventListener('resize', fitGameToScreen);
-window.addEventListener('orientationchange', fitGameToScreen);
+// Se la finestra cambia (schermo intero, rotazione, barre del browser) l'arena mobile si riadatta alla nuova forma
+function onViewportChange() {
+  if (state.running && touchMQ.matches) {
+    const oldW = W, oldH = H;
+    setArenaSize();
+    if (W !== oldW || H !== oldH) {
+      for (const p of state.players) { p.x = Math.min(p.x, W - p.size / 2); p.y = Math.min(p.y, H - p.size / 2); }
+    }
+  }
+  fitGameToScreen();
+}
+window.addEventListener('resize', onViewportChange);
+window.addEventListener('orientationchange', onViewportChange);
 fitGameToScreen();
 
 window.addEventListener('load', () => { if (settings.audioOn) { menuMusic.volume = settings.musicVolume; menuMusic.play().catch(() => {}); } drawMascot(); });
