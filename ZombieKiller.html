@@ -794,9 +794,9 @@ const CONFIG = {
   comboStep: 5,            // ogni quante uccisioni sale di un gradino il moltiplicatore
   comboMaxMult: 4,         // moltiplicatore punti massimo raggiungibile
   fireZombieLevel: 10,     // livello (come mostrato a schermo) da cui compaiono gli zombie fuoco
-  dashZombieLevel: 15,     // livello da cui compaiono gli zombie scattisti
-  bruteZombieLevel: 20,    // livello da cui compare lo zombie grosso
-  maxLevel: 40,            // ultimo livello: poi i livelli finiscono e compare il castello
+  dashZombieLevel: 14,     // livello da cui compaiono gli zombie scattisti
+  bruteZombieLevel: 18,    // livello da cui compare lo zombie grosso
+  maxLevel: 20,            // ultimo livello: poi i livelli finiscono e compare il castello
   fireStoneLife: 8000,     // durata sassolini di fuoco in ms (prima 3000)
   shockwaveSpeed: 0.16,    // px/ms: l'onda attraversa tutta l'arena (~6.5s)
   shockwaveGaps: 5,        // quanti varchi per schivare ci sono in ogni onda
@@ -806,9 +806,9 @@ const CONFIG = {
   zombieSpeed: 1.4,
   zombieSpeedVariation: 0.5,
   zombieSize: 48,
-  zombieHPBase: 15,
+  zombieHPBase: 10,
   zombieHPPerLevels: 1,
-  zombieHPMax: 80,
+  zombieHPMax: 50,
   maxZombieSpeed: 2.4,
   maxZombies1P: 6,     
   maxZombies2P: 8,
@@ -850,6 +850,7 @@ const CONFIG = {
 // ==================== PERSONAGGI (SPRITE SHEET) ====================
 const CHARACTERS_DATA = [
   { id: 0, name: 'Pablo', sprite: 'player1.png', frames: 8, frameW: 0, frameH: 0 },
+  { id: 1, name: 'Luizon', sprite: 'player1.png', frames: 8, frameW: 0, frameH: 0 },
 ];
 
 let characterSprites = {};
