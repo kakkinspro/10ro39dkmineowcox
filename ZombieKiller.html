@@ -225,6 +225,14 @@
   #joy0 { left: calc(22px + env(safe-area-inset-left, 0px)); }
   #joy1 { right: calc(22px + env(safe-area-inset-right, 0px)); display: none; border-color: rgba(68,170,255,0.6); box-shadow: 0 0 20px rgba(68,170,255,0.4), inset 0 0 20px rgba(68,170,255,0.15); }
   #joystickLayer.two #joy1 { display: block; }
+  .turretBtn { position: absolute; bottom: calc(26px + env(safe-area-inset-bottom, 0px)); width: 66px; height: 66px; border-radius: 50%; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 0; font-size: 26px; line-height: 1; color: #fff; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; background: radial-gradient(circle, rgba(255,170,0,0.38), rgba(255,170,0,0.08)); border: 2px solid rgba(255,170,0,0.9); box-shadow: 0 0 16px rgba(255,170,0,0.5), inset 0 0 14px rgba(255,170,0,0.2); }
+  .turretBtn small { font-size: 11px; font-weight: bold; margin-top: 3px; letter-spacing: 0.5px; }
+  .turretBtn.show { display: flex; }
+  .turretBtn.off { opacity: 0.4; filter: grayscale(0.7); }
+  .turretBtn:active { transform: scale(0.92); }
+  #turretBtn0 { right: calc(28px + env(safe-area-inset-right, 0px)); }
+  #turretBtn1 { right: calc(170px + env(safe-area-inset-right, 0px)); border-color: rgba(68,170,255,0.9); box-shadow: 0 0 16px rgba(68,170,255,0.5), inset 0 0 14px rgba(68,170,255,0.2); background: radial-gradient(circle, rgba(68,170,255,0.38), rgba(68,170,255,0.08)); }
+  #joystickLayer.two #turretBtn0 { right: auto; left: calc(170px + env(safe-area-inset-left, 0px)); }
   .joy .stick { position: absolute; left: 50%; top: 50%; width: 42%; height: 42%; transform: translate(-50%, -50%); border-radius: 50%; background: rgba(0,255,255,0.45); border: 2px solid #0ff; box-shadow: 0 0 18px #0ff; }
   #joy1 .stick { background: rgba(68,170,255,0.45); border-color: #4af; box-shadow: 0 0 18px #4af; }
 
@@ -341,6 +349,7 @@
       <div id="roomCode" class="roomCode">------</div>
       <button class="modalBtn close" onclick="netCopyCode()">📋 COPIA CODICE</button>
     </div>
+    <div id="netMode" style="font-size:12px; margin-top:10px; line-height:1.4; opacity:.9;"></div>
     <div id="onlineStatus"></div>
     <div class="modalBtns"><button class="modalBtn close" onclick="closeOnlinePopup()">◀ INDIETRO</button></div>
   </div>
@@ -390,6 +399,8 @@
 <div id="joystickLayer">
   <div class="joy" id="joy0"><div class="stick"></div></div>
   <div class="joy" id="joy1"><div class="stick"></div></div>
+  <button class="turretBtn" id="turretBtn0" aria-label="Piazza cannone">💣<small></small></button>
+  <button class="turretBtn" id="turretBtn1" aria-label="Piazza cannone giocatore 2">💣<small></small></button>
 </div>
 
 <div id="rotateHint"><span class="ico">📱</span>RUOTA IL TELEFONO<br><span style="font-size:0.7em;opacity:0.7">Il gioco si gioca in orizzontale</span></div>
@@ -1344,8 +1355,8 @@ function generateWalls() {
 
 // ==================== TORRETTA CANNONE ====================
 const TURRET_COST = 40;
-function placeCannonTurret() {
-  const p = state.players.find(player => player.id === (net.role === 'host' ? 0 : 0) && !player.isGhost);
+function placeCannonTurret(idx = 0) {
+  const p = state.players.find(player => player.id === idx && !player.isGhost);
   if (!p) return;
   if (p.score < TURRET_COST) { spawnDeathParticles(p.x, p.y, '#ffcc00', '#ffffff', 4); return; }
   // Limita una torretta per giocatore per evitare accumuli eccessivi.
@@ -1355,6 +1366,37 @@ function placeCannonTurret() {
   p.score -= TURRET_COST;
   state.turrets.push({ x, y, hp: 8, maxHp: 8, ownerId: p.id, lastShot: 0, lastHit: 0, angle: 0, shots: 0 });
 }
+
+// ---- Pulsante cannone per mobile (stesso effetto del tasto T) ----
+function turretAllowed() {
+  return state.running && !state.paused && !state.cutscene && !state.bossDialogueActive && state.area !== 'highway' && !(state.car && state.car.locked);
+}
+function turretBtnPress(btnIdx) {
+  if (!turretAllowed()) return;
+  if (net.role === 'guest') { netSend({ t: 'turret' }); return; }
+  placeCannonTurret(btnIdx);
+}
+function updateTurretBtns() {
+  const ok = turretAllowed();
+  for (let i = 0; i < 2; i++) {
+    const b = document.getElementById('turretBtn' + i); if (!b) continue;
+    const pid = net.role === 'guest' ? 1 : i;
+    const p = state.players.find(pl => pl.id === pid);
+    const visible = ok && !!p && !p.isGhost && (i === 0 || (state.numPlayers === 2 && !net.role));
+    b.classList.toggle('show', visible);
+    if (!visible) continue;
+    const placed = state.turrets.some(t => t.ownerId === pid);
+    b.classList.toggle('off', placed || p.score < TURRET_COST);
+    const sm = b.querySelector('small'), txt = placed ? '✓' : String(TURRET_COST);
+    if (sm.textContent !== txt) sm.textContent = txt;
+  }
+}
+for (let i = 0; i < 2; i++) {
+  const b = document.getElementById('turretBtn' + i);
+  b.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); initAudio(); turretBtnPress(i); });
+  b.addEventListener('contextmenu', e => e.preventDefault());
+}
+setInterval(updateTurretBtns, 150);
 
 // ==================== START / END ====================
 function startGame(numPlayers) {
@@ -2494,7 +2536,7 @@ function drawCombo(p, x, y) {
 }
 
 function drawHUD() {
-  if (state.running && !state.paused && state.area !== 'highway') { ctx.save(); ctx.font = 'bold 13px Arial'; ctx.textAlign = 'left'; ctx.fillStyle = '#fff'; ctx.shadowBlur = 0; ctx.fillText('T: TORRETTA CANNONE (40 punti)', 12, H - 12); ctx.restore(); }
+  if (state.running && !state.paused && state.area !== 'highway' && !touchMQ.matches) { ctx.save(); ctx.font = 'bold 13px Arial'; ctx.textAlign = 'left'; ctx.fillStyle = '#fff'; ctx.shadowBlur = 0; ctx.fillText('T: TORRETTA CANNONE (40 punti)', 12, H - 12); ctx.restore(); }
   ctx.save();
   ctx.font = 'bold 20px "Segoe UI", sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.shadowBlur = 15;
 
@@ -3010,6 +3052,21 @@ const PEER_CDNS = [
   'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js'
 ];
 const ROOM_PREFIX = 'zneon-surv-';
+// ---- Server ICE: STUN + TURN (il TURN fa da ponte quando firewall/NAT bloccano la connessione diretta) ----
+// Per massima affidabilità crea un account gratuito su https://www.metered.ca (sezione TURN) e incolla qui sotto
+// i tuoi dati, es.: { urls: 'turn:global.relay.metered.ca:443?transport=tcp', username: 'xxx', credential: 'yyy' }
+const NET_TURN_CUSTOM = [];
+const NET_ICE_SERVERS = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:global.stun.twilio.com:3478' },
+  ...NET_TURN_CUSTOM,
+  { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turns:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+];
+const NET_PEER_OPTS = { debug: 0, config: { iceServers: NET_ICE_SERVERS, iceCandidatePoolSize: 4 } };
 const SNAP_MS = 33;                       // ~30 snapshot/s
 const ZTYPES = ['normal', 'fire', 'dash', 'brute'];
 const SFX_NAMES = ['Shoot', 'ZombieDeath', 'Hit', 'BossDeath', 'Reload', 'FireDrop', 'BruteJump', 'BruteSlam', 'Portal', 'Buy'];
@@ -3050,6 +3107,81 @@ function netRandomCode() {
   const a = new Uint32Array(1); (window.crypto || window.msCrypto).getRandomValues(a);
   return String(100000 + (a[0] % 900000));
 }
+
+// ---- Ponte WebSocket (server.py): stessa interfaccia di PeerJS, ma passa dal server -> niente firewall/NAT ----
+let NET_RELAY = null;                       // null = non ancora verificato, true = uso server.py, false = PeerJS
+function netRelayUrl() { return (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws'; }
+function netProbeRelay() {
+  return new Promise(res => {
+    if (location.protocol !== 'http:' && location.protocol !== 'https:') return res(false);
+    let ws, done = false, t;
+    const fin = v => { if (done) return; done = true; clearTimeout(t); try { ws.close(); } catch (e) {} res(v); };
+    try { ws = new WebSocket(netRelayUrl()); } catch (e) { return res(false); }
+    t = setTimeout(() => fin(false), 3000);
+    ws.onmessage = ev => { try { const m = JSON.parse(ev.data); if (m && m.op === 'hello' && m.relay) fin(true); } catch (e) {} };
+    ws.onerror = () => fin(false); ws.onclose = () => fin(false);
+  });
+}
+class RelayConn {
+  constructor(peer, cid) { this.peer = peer; this.cid = cid; this.open = false; this._closed = false; this._h = {}; }
+  on(ev, fn) { (this._h[ev] = this._h[ev] || []).push(fn); return this; }
+  _emit(ev, a) { for (const f of (this._h[ev] || []).slice()) { try { f(a); } catch (e) { console.error(e); } } }
+  get dataChannel() { return { bufferedAmount: this.peer._ws ? this.peer._ws.bufferedAmount : 0 }; }
+  send(d) { if (this.open) this.peer._tx({ op: 'data', cid: this.cid, d }); }
+  close() {
+    if (this._closed) return; this._closed = true; this.open = false;
+    this.peer._tx({ op: 'close', cid: this.cid }); this.peer.conns.delete(this.cid);
+    this._emit('close');
+  }
+}
+class RelayPeer {
+  constructor(id) { this.id = id || null; this._h = {}; this.destroyed = false; this.conns = new Map(); this._opened = false; this._guestConn = null; this._host = !!id; this._connect(); }
+  on(ev, fn) { (this._h[ev] = this._h[ev] || []).push(fn); return this; }
+  _emit(ev, a) { for (const f of (this._h[ev] || []).slice()) { try { f(a); } catch (e) { console.error(e); } } }
+  _tx(o) { if (this._ws && this._ws.readyState === 1) this._ws.send(JSON.stringify(o)); }
+  _connect() {
+    let ws; try { ws = new WebSocket(netRelayUrl()); } catch (e) { setTimeout(() => this._emit('error', { type: 'socket-error' }), 0); return; }
+    this._ws = ws;
+    ws.onopen = () => ws.send(JSON.stringify(this.id ? { op: 'reg', id: this.id } : { op: 'reg' }));
+    ws.onmessage = ev => { let m; try { m = JSON.parse(ev.data); } catch (e) { return; } if (m && typeof m === 'object') this._rx(m); };
+    ws.onerror = () => { if (!this._opened && !this.destroyed) this._emit('error', { type: 'socket-error' }); };
+    ws.onclose = () => {
+      if (this.destroyed) return;
+      const wasOpen = this._opened; this._opened = false;
+      for (const c of [...this.conns.values(), this._guestConn]) if (c && !c._closed) { c._closed = true; c.open = false; c._emit('close'); }
+      this.conns.clear();
+      if (wasOpen) this._emit('error', { type: 'socket-closed' });
+    };
+  }
+  _rx(m) {
+    switch (m.op) {
+      case 'open': this._opened = true; if (!this.id) this.id = m.id; this._emit('open', this.id); break;
+      case 'error': this._emit('error', { type: m.type || 'server-error' }); break;
+      case 'incoming': {
+        const c = new RelayConn(this, m.cid); c.open = true; this.conns.set(m.cid, c);
+        this._emit('connection', c); setTimeout(() => c._emit('open'), 0); break;
+      }
+      case 'joined': { const c = this._guestConn; if (c && !c._closed) { c.open = true; setTimeout(() => c._emit('open'), 0); } break; }
+      case 'data': { const c = this._host ? this.conns.get(m.cid) : this._guestConn; if (c && c.open) c._emit('data', m.d); break; }
+      case 'closed': {
+        const c = this._host ? this.conns.get(m.cid) : this._guestConn;
+        if (c && !c._closed) { c._closed = true; c.open = false; this.conns.delete(m.cid); c._emit('close'); }
+        break;
+      }
+    }
+  }
+  connect(to) { const c = new RelayConn(this, 0); this._guestConn = c; this._tx({ op: 'join', to }); return c; }
+  reconnect() {}
+  destroy() { this.destroyed = true; try { if (this._ws) this._ws.close(); } catch (e) {} }
+}
+async function netPrepare() {
+  if (NET_RELAY === null) NET_RELAY = await netProbeRelay();
+  if (!NET_RELAY) await netLoadPeerLib();
+}
+function netMakePeer(id) {
+  if (NET_RELAY) return new RelayPeer(id);
+  return id ? new Peer(id, NET_PEER_OPTS) : new Peer(NET_PEER_OPTS);
+}
 function netLoadPeerLib() {
   if (window.Peer) return Promise.resolve();
   const tryLoad = (i) => new Promise((resolve, reject) => {
@@ -3067,6 +3199,18 @@ function openOnlinePopup() {
   playClickSound(); modePopup.classList.remove('open');
   netLeave(); netShowView('menu'); netStatus('');
   onlinePopup.classList.add('open');
+  netUpdateBadge('...');
+  netPrepare().then(() => netUpdateBadge(NET_RELAY ? 'relay' : 'p2p'), () => netUpdateBadge('lib'));   // verifica subito il server e precarica PeerJS
+}
+function netUpdateBadge(mode) {
+  const el = document.getElementById('netMode'); if (!el) return;
+  const M = {
+    '...': ['#aaa', '⏳ Controllo la connessione…'],
+    relay: ['#0f0', '🟢 Server locale attivo: connessione stabile (niente firewall/NAT)'],
+    p2p: ['#fc0', '🟡 Modalità P2P diretta: può fallire con firewall/NAT. Per la modalità stabile avvia il gioco con: python3 server.py'],
+    lib: ['#f66', '🔴 Modulo online non raggiungibile. Controlla la connessione internet o avvia il gioco con: python3 server.py']
+  };
+  const m = M[mode] || M['...']; el.style.color = m[0]; el.textContent = m[1];
 }
 function closeOnlinePopup() {
   playClickSound(); netLeave(); onlinePopup.classList.remove('open');
@@ -3086,8 +3230,8 @@ function netFail(err) {
   const msgs = {
     'peer-unavailable': '❌ Stanza non trovata. Controlla il codice.',
     'full': '❌ La stanza è già piena.',
-    'closed': '❌ L\'host ha chiuso la connessione.',
-    'timeout': '❌ Connessione scaduta (rete, firewall o NAT?). Riprova.',
+    'closed': '❌ Non sono riuscito a entrare nella stanza. Controlla il codice e che l\'host sia ancora nella schermata della stanza, poi riprova.',
+    'timeout': '❌ Connessione scaduta. Se persiste prova un\'altra rete (es. hotspot del telefono) o disattiva VPN/firewall. Riprova.',
     'lib': '❌ Impossibile caricare il modulo online. Controlla la connessione.',
     'network': '❌ Server non raggiungibile. Controlla la connessione.',
     'server-error': '❌ Server online non raggiungibile. Riprova tra poco.',
@@ -3130,7 +3274,7 @@ async function netCreateRoom() {
   playClickSound(); initAudio();
   if (net.busy) return; net.busy = true; net.side = 'host';
   netShowView('host'); document.getElementById('roomCode').textContent = '······'; netStatus('Connessione al server…');
-  try { await netLoadPeerLib(); } catch (e) { return netFail('lib'); }
+  try { await netPrepare(); } catch (e) { return netFail('lib'); }
   if (!net.busy) return;
   netTryCreate(0);
 }
@@ -3138,7 +3282,7 @@ function netTryCreate(attempt) {
   if (attempt > 6) return netFail('server-error');
   const code = netRandomCode();
   let peer;
-  try { peer = new Peer(ROOM_PREFIX + code, { debug: 0 }); } catch (e) { return netFail('browser-incompatible'); }
+  try { peer = netMakePeer(ROOM_PREFIX + code); } catch (e) { return netFail('browser-incompatible'); }
   net.peer = peer; net.code = code;
   peer.on('open', () => {
     if (net.peer !== peer) return;
@@ -3183,6 +3327,9 @@ function netHostOnData(msg) {
     }
     case 'in':
       net.input.x = netNum(msg.x, -1, 1, 0); net.input.y = netNum(msg.y, -1, 1, 0); net.input.f = msg.f ? 1 : 0; net.input.a = msg.a ? 1 : 0; break;
+    case 'turret':
+      if (net.role === 'host' && turretAllowed()) placeCannonTurret(1);
+      break;
     case 'reload': {
       const g = state.players[1];
       if (net.role === 'host' && state.running && g && !g.isGhost && !g.reloading && g.ammo < g.maxAmmo) {
@@ -3295,6 +3442,7 @@ function netHostSendSnapshot() {
     b: state.bullets.map(q => [r(q.x), r(q.y), r2(q.vx), r2(q.vy), q.type]),
     bb: state.bossBullets.map(q => [r(q.x), r(q.y), r2(q.vx), r2(q.vy)]),
     pu: state.powerups.map(u => [r(u.x), r(u.y), u.type === 'heart' ? 0 : 1]),
+    tu: state.turrets.map(t => [r(t.x), r(t.y), r1(t.hp), t.maxHp, t.ownerId, r2(t.angle || 0)]),
     fs: state.fireStones.map(f => [r(f.x), r(f.y), r(f.life), f.seed]),
     sw: state.shockwaves.map(s => [r(s.x), r(s.y), r(s.radius), r2(s.gapStart)]),
     bo: b ? [r(b.x), r(b.y), b.size, r1(b.hp), b.maxHp, b.emoji, r(Math.max(0, b.hitFlash || 0)), b.burnUntil > now ? r(b.burnUntil - now) : 0, b.active ? 1 : 0] : null,
@@ -3319,17 +3467,17 @@ async function netJoinRoom() {
   if (code.length !== 6) { netStatus('❌ Inserisci un codice di 6 cifre.', true); return; }
   if (net.busy) return; net.busy = true; net.side = 'guest';
   netStatus('Connessione al server…');
-  try { await netLoadPeerLib(); } catch (e) { return netFail('lib'); }
+  try { await netPrepare(); } catch (e) { return netFail('lib'); }
   if (!net.busy) return;
   let peer;
-  try { peer = new Peer({ debug: 0 }); } catch (e) { return netFail('browser-incompatible'); }
+  try { peer = netMakePeer(); } catch (e) { return netFail('browser-incompatible'); }
   net.peer = peer;
   peer.on('open', () => {
     if (net.peer !== peer) return;
     netStatus('Cerco la stanza ' + code + '…');
     const conn = peer.connect(ROOM_PREFIX + code, { reliable: true, serialization: 'json' });
     net.conn = conn; net.lastRx = performance.now(); net.joined = false;
-    net.joinTimer = setTimeout(() => { if (!net.joined && net.conn === conn) netFail('timeout'); }, 15000);
+    net.joinTimer = setTimeout(() => { if (!net.joined && net.conn === conn) netFail('timeout'); }, 25000);
     conn.on('open', () => {
       if (net.conn !== conn) return;
       net.lastRx = performance.now();
@@ -3480,6 +3628,7 @@ function netApplySnapshot(m) {
   state.bullets = (m.b || []).map(a => ({ x: a[0], y: a[1], vx: a[2], vy: a[3], type: a[4] }));
   state.bossBullets = (m.bb || []).map(a => ({ x: a[0], y: a[1], vx: a[2], vy: a[3] }));
   state.powerups = (m.pu || []).map(a => ({ x: a[0], y: a[1], type: a[2] === 0 ? 'heart' : 'ammo' }));
+  state.turrets = (m.tu || []).map(a => ({ x: a[0], y: a[1], hp: a[2], maxHp: a[3], ownerId: a[4], angle: a[5] }));
   state.shockwaves = (m.sw || []).map(a => ({ x: a[0], y: a[1], radius: a[2], gapStart: a[3] }));
   // pietre di fuoco (le pietrine sono casuali: si generano una volta sola per seed)
   const stones = [], liveSeeds = new Set();
