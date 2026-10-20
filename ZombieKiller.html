@@ -26,6 +26,10 @@
     padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
   }
 
+  @media (pointer: coarse) {
+    body.fsPad { padding-left: max(env(safe-area-inset-left, 0px), 14px); padding-right: max(env(safe-area-inset-right, 0px), 14px); }
+  }
+
   #mainMenu {
     position: fixed; inset: 0;
     display: flex; flex-direction: column;
@@ -443,7 +447,7 @@
     zombieFrameW: 64, zombieFrameH: 64, zombieFrames: 6, zombieDrawSize: 60,
     bossFrameW: 128, bossFrameH: 128, bossFrames: 6, bossDrawSize: 180, animFPS: 10,
     typewriterSpeed: 40, spriteTrimRatio: 0, wallCount: 5, wallMinSize: 50, wallMaxSize: 140, wallThickness: 20, wallColor: '#222530',
-    mobilePlayerSpeedMul: 0.85, mobileViewH: 540, mobileSpeedMul: 0.75,
+    mobilePlayerSpeedMul: 0.85, mobileViewH: 540, mobileMaxRes: 2, mobileFullMap: true, mobileSpeedMul: 0.75,
     introCutscene: true,
     parkingMap: true,       // sfondo parcheggio + collisioni (auto, pali, supermercato, bordo strada)
     randomWalls: false,     // muri casuali neon: disattivati con la mappa del parcheggio
@@ -495,6 +499,14 @@
   
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
+  // Risoluzione di rendering (su mobile > 1 per avere un'immagine nitida a schermo intero).
+  // shadowBlur non segue la scala del contesto: lo moltiplichiamo noi così i neon restano uguali.
+  let RES = 1;
+  (function () {
+    const d = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, 'shadowBlur');
+    if (!d || !d.get || !d.set) return;
+    Object.defineProperty(ctx, 'shadowBlur', { configurable: true, get() { return d.get.call(this) / RES; }, set(v) { d.set.call(this, v * RES); } });
+  })();
   const gameWrap = document.getElementById('gameWrap');
   const mainMenu = document.getElementById('mainMenu');
   const settingsModal = document.getElementById('settingsModal');
@@ -547,7 +559,7 @@
     toastTimeout = setTimeout(() => toastEl.classList.remove('show'), 2000);
   }
   
-  let bgImage = new Image(); bgImage.src = 'background.png'; let bgLoaded = false;
+  let bgImage = new Image(); bgImage.src = '12704_big.png'; let bgLoaded = false;
   bgImage.onload = () => { bgLoaded = true; };
   let zombieSprite = new Image(); zombieSprite.src = 'zombie.png'; let zombieSpriteLoaded = false;
   zombieSprite.onload = () => { zombieSpriteLoaded = true; };
@@ -900,21 +912,21 @@ const HW_CAR_COLORS = ['#d64545', '#e6b422', '#3a6ee0', '#e4e4ec', '#8e44ad', '#
 const CAR_PHASES = ['arrive', 'parked', 'boarding', 'ready', 'exit'];
 const CAR_TYPES = ['car', 'zombie', 'truck'];
 
-// Percorsi in coordinate dell'immagine background.png (1536x1024).
+// Percorsi in coordinate dell'immagine 12704.png (1672x941).
 // Arrivo: dalla strada in basso (da destra), curva a destra, su per la corsia di destra (freccia verso l'alto).
 function buildCarPath() {
   const pts = [];
-  for (let x = 1900; x > 870; x -= 8) pts.push([x, 990]);
-  for (let a = 0; a <= 90; a += 6) { const r = a * Math.PI / 180; pts.push([870 - 60 * Math.sin(r), 930 + 60 * Math.cos(r)]); }
-  for (let y = 925; y > 690; y -= 8) pts.push([810, y]);
-  pts.push([810, 690]);
+  for (let x = 2000; x > 923; x -= 8) pts.push([x, 868]);
+  for (let a = 0; a <= 90; a += 6) { const r = a * Math.PI / 180; pts.push([923 - 60 * Math.sin(r), 808 + 60 * Math.cos(r)]); }
+  for (let y = 803; y > 585; y -= 8) pts.push([863, y]);
+  pts.push([863, 585]);
   return pts;
 }
 // Uscita: inversione a U verso la corsia di sinistra (freccia verso il basso), poi giù fino alla strada.
 function buildCarExitPath() {
-  const pts = [], cx = 767.5, cy = 690, r = 42.5;
+  const pts = [], cx = 832.5, cy = 585, r = 30.5;
   for (let a = 0; a <= 180; a += 6) { const t = a * Math.PI / 180; pts.push([cx + r * Math.cos(t), cy - r * Math.sin(t)]); }
-  for (let y = 696; y < 1160; y += 8) pts.push([725, y]);
+  for (let y = 591; y < 1160; y += 8) pts.push([802, y]);
   return pts;
 }
 function carPlace(c) {
@@ -924,7 +936,7 @@ function carPlace(c) {
   c.x = (a[0] + (b[0] - a[0]) * f) * t.s + t.ox; c.y = (a[1] + (b[1] - a[1]) * f) * t.s + t.oy;
   const dx = b[0] - a[0], dy = b[1] - a[1];
   if (dx || dy) c.ang = Math.atan2(dx, -dy);          // 0 = muso verso l'alto
-  c.w = 50 * t.s; c.h = 92 * t.s;
+  c.w = PARK_CAR_W * t.s; c.h = PARK_CAR_H * t.s;
 }
 function carSetWall(c) {
   state.walls = state.walls.filter(w => !w.car);
@@ -933,7 +945,7 @@ function carSetWall(c) {
 
 function spawnCar() {
   const t = parkTransform();
-  state.car = { phase: 'arrive', path: buildCarPath(), pi: 0, vel: 0, x: -999, y: -999, ang: 0, w: 50 * t.s, h: 92 * t.s, lights: true, doorL: 0, doorR: 0, bt: 0, rt: 0, snd: 0, locked: false };
+  state.car = { phase: 'arrive', path: buildCarPath(), pi: 0, vel: 0, x: -999, y: -999, ang: 0, w: PARK_CAR_W * t.s, h: PARK_CAR_H * t.s, lights: true, doorL: 0, doorR: 0, bt: 0, rt: 0, snd: 0, locked: false };
   carPlace(state.car);
   for (const z of state.zombies) spawnDeathParticles(z.x, z.y, '#0ff', '#f0f', 10);
   state.zombies = []; state.fireStones = []; state.shockwaves = []; state.bossBullets = []; state.turretBullets = [];
@@ -1260,24 +1272,26 @@ function updateHighway(dt, now) {
 }
 
 // ==================== MAPPA PARCHEGGIO (collisioni sullo sfondo) ====================
-// Rettangoli [x, y, w, h] in coordinate dell'immagine background.png (1536x1024).
+// Rettangoli [x, y, w, h] in coordinate dell'immagine 12704_big.png (1672x941, auto e cartelli ingranditi).
 // Vengono scalati con la stessa trasformazione "cover" usata per disegnare lo sfondo,
 // quindi restano allineati a qualsiasi dimensione dell'arena (desktop e mobile).
-const PARK_IMG_W = 1536, PARK_IMG_H = 1024;
+// Per vederli in gioco metti CONFIG.showCollisions = true (rosso = ostacoli, verde = bordo).
+const PARK_IMG_W = 1672, PARK_IMG_H = 941;
 const PARK_OBSTACLES = [
-  // automobili
-  [372, 345, 46, 72], [533, 345, 47, 72], [1012, 345, 46, 72], [1218, 345, 44, 72],
-  [340, 531, 46, 72], [1080, 531, 47, 72],
-  [340, 725, 46, 75], [543, 725, 46, 75], [1080, 725, 47, 75],
-  // pali della luce (base)
-  [288, 543, 26, 33], [287, 738, 26, 34], [1200, 543, 26, 33], [1200, 738, 26, 34],
-  // supermercato: facciata, area camion, striscia verde, carrelli, bidoni
-  [205, -100, 1220, 392], [52, -100, 153, 445], [1425, -100, 63, 455], [330, 272, 156, 46], [1288, 272, 140, 46],
-  // cartelli in basso
-  [95, 828, 247, 90], [1308, 757, 150, 158]
+  // automobili parcheggiate
+  [414, 302, 46, 76], [577, 302, 46, 76], [1018, 304, 46, 74], [1198, 304, 48, 74],
+  [477, 442, 46, 74], [1141, 445, 46, 73],
+  [423, 588, 48, 73], [644, 588, 46, 73], [1142, 590, 48, 70],
+  // lampioni (base del palo)
+  [349, 455, 16, 30], [349, 600, 16, 30], [1257, 455, 16, 30], [1257, 600, 16, 30],
+  // supermercato: facciata, tetto, ingresso, camion, carrelli, cestini e fasce laterali
+  [140, -100, 1395, 400],
+  // cartelloni in basso
+  [146, 696, 284, 86], [1355, 668, 170, 128]
 ];
-// Muro invisibile che chiude il parcheggio: sinistra, destra e basso (la strada).
-const PARK_BOUNDARY = [[-400, -400, 452, 2000], [1488, -400, 500, 2000], [-400, 938, 2400, 300]];
+// Muro invisibile che chiude il parcheggio: sinistra, destra e basso (strada, compreso il varco delle strisce pedonali).
+const PARK_BOUNDARY = [[-400, -400, 546, 2000], [1530, -400, 500, 2000], [-400, 768, 2400, 300]];
+const PARK_CAR_W = 46, PARK_CAR_H = 76;               // ingombro dell'auto della fuga, in pixel dell'immagine
 
 function parkTransform() {
   const s = Math.max(W / PARK_IMG_W, H / PARK_IMG_H);
@@ -1313,7 +1327,7 @@ function parkSide() { return CONFIG.parkingMap ? 1 + Math.floor(Math.random() * 
 function parkSpawnMinY() {
   if (!CONFIG.parkingMap) return 0;
   const t = parkTransform();
-  return Math.min(H - 60, Math.max(0, 360 * t.s + t.oy));
+  return Math.min(H - 60, Math.max(0, 330 * t.s + t.oy));
 }
 
 // ==================== MURI ====================
@@ -2589,6 +2603,7 @@ function drawBgCover() {
 }
 
 function render(now) {
+  syncCanvasRes();
   ctx.clearRect(0, 0, W, H);
   if (state.area === 'highway') { renderHighway(now); return; }
   if (bgLoaded) { drawBgCover(); ctx.fillStyle = 'rgba(0,0,20,0.1)'; ctx.fillRect(0, 0, W, H); }
@@ -2633,32 +2648,68 @@ function gameLoop(now) {
   requestAnimationFrame(gameLoop);
 }
 
+// Margini reali dell'area di gioco (notch, barre, margine di sicurezza): letti dal padding del body,
+// così coincidono sempre con quelli che il CSS usa per centrare il gioco.
 function getInsets() {
-  const cs = getComputedStyle(document.getElementById('safeProbe'));
+  const cs = getComputedStyle(document.body);
   return { t: parseFloat(cs.paddingTop) || 0, r: parseFloat(cs.paddingRight) || 0, b: parseFloat(cs.paddingBottom) || 0, l: parseFloat(cs.paddingLeft) || 0 };
 }
+// Dimensioni visibili: usa anche visualViewport (più affidabile di innerWidth/innerHeight durante lo schermo intero)
+function getViewport() {
+  let w = window.innerWidth, h = window.innerHeight;
+  const vv = window.visualViewport;
+  if (vv && vv.width && vv.height && Math.abs((vv.scale || 1) - 1) < 0.01) { w = Math.min(w, vv.width); h = Math.min(h, vv.height); }
+  return { w, h };
+}
 function setArenaSize() {
-  if (net.role === 'guest' && net.arena) { W = net.arena.W; H = net.arena.H; canvas.width = W; canvas.height = H; return; }
+  if (net.role === 'guest' && net.arena) { W = net.arena.W; H = net.arena.H; syncCanvasRes(); return; }
+  let nW = 900, nH = 600;
   if (touchMQ.matches) {
-    const ins = getInsets();
-    const aw = window.innerWidth - ins.l - ins.r, ah = window.innerHeight - ins.t - ins.b;
-    const aspect = Math.max(aw, ah) / Math.max(1, Math.min(aw, ah));
-    H = CONFIG.mobileViewH;
-    W = Math.max(600, Math.min(1100, Math.round(H * aspect)));
-  } else { W = 900; H = 600; }
-  canvas.width = W; canvas.height = H;
+    nH = CONFIG.mobileViewH;
+    if (CONFIG.parkingMap && CONFIG.mobileFullMap) {
+      // Mappa del parcheggio INTERA: l'arena ha la stessa proporzione dell'immagine (16:9), quindi niente
+      // tagli sopra/sotto; ai lati dello schermo restano due fasce libere (dove stanno i controlli).
+      nW = Math.round(nH * PARK_IMG_W / PARK_IMG_H);
+    } else {
+      const ins = getInsets(), vp = getViewport();
+      const aw = vp.w - ins.l - ins.r, ah = vp.h - ins.t - ins.b;
+      const aspect = Math.max(aw, ah) / Math.max(1, Math.min(aw, ah));
+      nW = Math.max(600, Math.min(1100, Math.round(nH * aspect)));
+    }
+    // durante la partita ignora le micro-variazioni (evita di rigenerare la mappa a ogni piccolo resize)
+    if (state.running && nH === H && Math.abs(nW - W) < 12) nW = W;
+  }
+  W = nW; H = nH; syncCanvasRes();
+}
+// Adatta la risoluzione reale del canvas a quella dello schermo (devicePixelRatio × zoom CSS),
+// con un tetto (CONFIG.mobileMaxRes) per non appesantire i telefoni.
+function syncCanvasRes() {
+  const pw = Math.round(W * RES), ph = Math.round(H * RES);
+  if (canvas.width !== pw || canvas.height !== ph) { canvas.width = pw; canvas.height = ph; }
+  const sw = W + 'px', sh = H + 'px';
+  if (canvas.style.width !== sw) canvas.style.width = sw;
+  if (canvas.style.height !== sh) canvas.style.height = sh;
+  ctx.setTransform(RES, 0, 0, RES, 0, 0);
+}
+function updateCanvasRes(scale) {
+  const dpr = window.devicePixelRatio || 1;
+  const r = touchMQ.matches ? Math.min(CONFIG.mobileMaxRes, Math.max(1, dpr * scale)) : 1;
+  RES = Math.round(r * 100) / 100;
+  syncCanvasRes();
 }
 function fitGameToScreen() {
   const touch = touchMQ.matches;
   const pad = touch ? 0 : 16;
   const ins = touch ? getInsets() : { t: 0, r: 0, b: 0, l: 0 };
+  const vp = touch ? getViewport() : { w: window.innerWidth, h: window.innerHeight };
   const scale = Math.min(
-    (window.innerWidth - ins.l - ins.r - pad * 2) / W,
-    (window.innerHeight - ins.t - ins.b - pad * 2) / H
+    (vp.w - ins.l - ins.r - pad * 2) / W,
+    (vp.h - ins.t - ins.b - pad * 2) / H
   );
   gameWrap.style.transform = 'scale(' + Math.max(0.2, scale) + ')';
+  updateCanvasRes(Math.max(0.2, scale));
 }
-function onViewportChange() {
+function applyViewport() {
   if (state.running && touchMQ.matches) {
     const oldW = W, oldH = H; setArenaSize();
     if (W !== oldW || H !== oldH) {
@@ -2668,8 +2719,23 @@ function onViewportChange() {
   }
   fitGameToScreen();
 }
+// Lo schermo intero cambia le misure in più passaggi (animazione, barre che spariscono):
+// ricalcola subito e poi altre volte finché le misure non si sono assestate.
+let vpTimers = [];
+function onViewportChange() {
+  applyViewport();
+  vpTimers.forEach(clearTimeout);
+  vpTimers = [120, 400, 900].map(ms => setTimeout(applyViewport, ms));
+}
+function onFullscreenChange() {
+  document.body.classList.toggle('fsPad', !!(document.fullscreenElement || document.webkitFullscreenElement));
+  onViewportChange();
+}
 window.addEventListener('resize', onViewportChange);
 window.addEventListener('orientationchange', onViewportChange);
+document.addEventListener('fullscreenchange', onFullscreenChange);
+document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', onViewportChange);
 fitGameToScreen();
 
 window.addEventListener('load', () => {
@@ -2943,7 +3009,7 @@ function csSweat(x, y, t) {
 function renderCutscene(now) {
   const cs = state.cutscene, t = cs.t / 1000, end = CS.DUR / 1000;
   const s = H / 600, ox = (W - 900 * s) / 2;
-  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+  syncCanvasRes(); ctx.globalAlpha = 1; ctx.shadowBlur = 0;
   ctx.clearRect(0, 0, W, H); ctx.fillStyle = '#14162a'; ctx.fillRect(0, 0, W, H);
   ctx.save();
   let sx = 0, sy = 0;
