@@ -110,7 +110,10 @@
   #bestRecordMenu { position: absolute; bottom: 20px; left: 20px; color: #0f0; font-size: 0.9em; text-shadow: 0 0 10px #0f0; letter-spacing: 1.5px; z-index: 3; line-height: 1.6; }
   #bestRecordMenu .p2rec { color: #4af; text-shadow: 0 0 10px #4af; }
   #bestRecordMenu .coins { color: #ff0; text-shadow: 0 0 10px #ff0; }
-  #version { position: absolute; bottom: 20px; right: 20px; color: #666; font-size: 0.85em; letter-spacing: 1px; z-index: 3; }
+  #btnFullscreen { position: absolute; bottom: 14px; right: 16px; width: 44px; height: 44px; z-index: 4; display: flex; align-items: center; justify-content: center; font-size: 22px; line-height: 1; color: #0ff; background: rgba(0,0,0,0.55); border: 2px solid #0ff; border-radius: 8px; cursor: pointer; box-shadow: 0 0 10px rgba(0,255,255,0.35); transition: transform .15s, background .15s; padding: 0; }
+  #btnFullscreen:hover { background: rgba(0,255,255,0.18); transform: scale(1.08); }
+  #btnFullscreen.on { color: #0f0; border-color: #0f0; box-shadow: 0 0 10px rgba(0,255,0,0.35); }
+  #version { position: absolute; bottom: 20px; right: 72px; color: #666; font-size: 0.85em; letter-spacing: 1px; z-index: 3; }
 
   .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.95); display: none; justify-content: center; align-items: center; z-index: 100; padding: 20px; }
   .modal.open { display: flex; }
@@ -236,6 +239,7 @@
     .menuBtn { padding: 10px 22px; font-size: 1em; letter-spacing: 2px; min-width: 0; margin: 4px 0; border-width: 2px; border-radius: 10px; }
     #mascot { width: 36px; height: 48px; bottom: 10px; right: calc(12px + env(safe-area-inset-right, 0px)); }
     #version { bottom: 8px; right: calc(60px + env(safe-area-inset-right, 0px)); font-size: 0.7em; }
+    #btnFullscreen { width: 36px; height: 36px; font-size: 18px; bottom: 6px; right: calc(10px + env(safe-area-inset-right, 0px)); }
     #bestRecordMenu { bottom: 8px; left: calc(12px + env(safe-area-inset-left, 0px)); font-size: 0.7em; line-height: 1.4; letter-spacing: 1px; }
     .modal { padding: max(8px, env(safe-area-inset-top, 0px)) max(8px, env(safe-area-inset-right, 0px)) max(8px, env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px)); }
     .modalBox { padding: 14px 18px; max-height: 96vh; max-height: 96dvh; border-radius: 14px; }
@@ -306,6 +310,7 @@
     <span class="p2rec">🏆 2P: <span id="bestRecord2PMenu">0</span></span><br>
     <span class="coins">🪙 P1: <span id="coinsP1Menu">0</span> · P2: <span id="coinsP2Menu">0</span></span>
   </div>
+  <button id="btnFullscreen" title="Schermo intero" aria-label="Schermo intero" onclick="toggleFullscreen()">⛶</button>
   <div id="version">v3.2</div>
   <div id="scanlines"></div>
 </div>
@@ -1414,6 +1419,23 @@ function startGame(numPlayers) {
 }
 
 function replayGame() { if (net.role === 'host') return netHostRematch(); state.skipCutscene = true; startGame(state.lastMode); }
+function toggleFullscreen() {
+  const el = document.documentElement;
+  const isFs = document.fullscreenElement || document.webkitFullscreenElement;
+  try {
+    if (!isFs) { const r = el.requestFullscreen || el.webkitRequestFullscreen; if (r) { const p = r.call(el); if (p && p.catch) p.catch(() => {}); } }
+    else { const x = document.exitFullscreen || document.webkitExitFullscreen; if (x) { const p = x.call(document); if (p && p.catch) p.catch(() => {}); } }
+  } catch (e) {}
+}
+function syncFullscreenBtn() {
+  const b = document.getElementById('btnFullscreen'); if (!b) return;
+  const on = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  b.classList.toggle('on', on); b.textContent = on ? '✕' : '⛶'; b.title = on ? 'Esci da schermo intero' : 'Schermo intero';
+}
+document.addEventListener('fullscreenchange', syncFullscreenBtn);
+document.addEventListener('webkitfullscreenchange', syncFullscreenBtn);
+(function () { const el = document.documentElement; if (!(el.requestFullscreen || el.webkitRequestFullscreen)) { const b = document.getElementById('btnFullscreen'); if (b) b.style.display = 'none'; } })();
+
 function backToMenu() {
   if (net.role) netLeave();
   state.running = false; state.paused = false; dialogueBox.classList.remove('open'); gameOverScreen.classList.remove('open'); gameWrap.classList.remove('active'); mainMenu.style.display = 'flex';
